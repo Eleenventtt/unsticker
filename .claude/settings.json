@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls /Users/anthony/_sticker_jobs/output/*)",
+      "Bash(/Users/anthony/_sticker_jobs/.claude/notify.sh *)"
+    ]
+  }
+}

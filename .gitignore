@@ -1,0 +1,13 @@
+.env
+.DS_Store
+__pycache__/
+*.pyc
+output/
+output_*/
+masks/
+tencent_masks/
+api_masks/
+api_sources/
+previews/
+comparisons_*/
+work_order*.jsonl

@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UNSTICKER — 贴纸移除工作台</title>
+<style>
+  :root {
+    --bg:        #080808;
+    --bg-2:      #0f0f0f;
+    --surface:   #141414;
+    --surface-2: #1c1c1c;
+    --border:    rgba(255,255,255,0.07);
+    --border-2:  rgba(255,255,255,0.12);
+    --text:      #ebebeb;
+    --text-2:    #888;
+    --text-3:    #444;
+    --accent:    #7c3aed;
+    --accent-2:  #4f46e5;
+    --accent-glow: rgba(124,58,237,0.25);
+    --success:   #10b981;
+    --danger:    #ef4444;
+    --warn:      #f59e0b;
+    --r:         10px;
+    --r-sm:      6px;
+    --sidebar-w: 220px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    overflow: hidden;
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: var(--sidebar-w);
+    background: var(--bg-2);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    padding: 28px 0 20px;
+  }
+
+  .brand {
+    padding: 0 20px 28px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .brand-mark {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .brand-icon {
+    width: 32px; height: 32px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+    box-shadow: 0 0 20px var(--accent-glow);
+  }
+  .brand-name {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: var(--text);
+  }
+  .brand-sub {
+    font-size: 10px;
+    color: var(--text-3);
+    letter-spacing: 0.08em;
+    margin-top: 1px;
+  }
+
+  .nav {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 0 12px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: var(--r-sm);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    color: var(--text-2);
+    user-select: none;
+  }
+  .nav-item:hover { background: var(--surface); color: var(--text); }
+  .nav-item.active {
+    background: linear-gradient(135deg, rgba(124,58,237,0.18), rgba(79,70,229,0.12));
+    color: var(--text);
+    border: 1px solid rgba(124,58,237,0.25);
+  }
+  .nav-item.active .step-dot { background: var(--accent); box-shadow: 0 0 8px var(--accent-glow); }
+  .nav-item.done .step-dot { background: var(--success); }
+  .nav-item.done { color: var(--text-2); }
+
+  .step-dot {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--surface-2);
+    border: 1px solid var(--border-2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-2);
+    flex-shrink: 0;
+    transition: all 0.2s;
+  }
+  .nav-item.done .step-dot { color: #fff; border-color: var(--success); }
+  .nav-item.active .step-dot { color: #fff; border-color: var(--accent); }
+
+  .nav-label { font-size: 13px; font-weight: 500; }
+
+  .sidebar-footer {
+    padding: 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  .btn-settings {
+    width: 100%;
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-2);
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.15s;
+  }
+  .btn-settings:hover { background: var(--surface); color: var(--text); border-color: var(--border-2); }
+
+  /* ── Main ── */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .topbar {
+    height: 52px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 28px;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  .topbar-title {
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .topbar-path {
+    font-size: 12px;
+    color: var(--text-2);
+    font-family: "SF Mono", "Fira Code", monospace;
+    background: var(--surface);
+    padding: 3px 8px;
+    border-radius: 4px;
+    max-width: 360px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    background: var(--surface-2);
+    color: var(--text-2);
+    border: 1px solid var(--border);
+    font-weight: 500;
+  }
+  .badge.ok { background: rgba(16,185,129,0.1); color: var(--success); border-color: rgba(16,185,129,0.2); }
+  .badge.warn { background: rgba(245,158,11,0.1); color: var(--warn); border-color: rgba(245,158,11,0.2); }
+
+  .content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 28px;
+  }
+  .content::-webkit-scrollbar { width: 4px; }
+  .content::-webkit-scrollbar-track { background: transparent; }
+  .content::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 2px; }
+
+  /* ── Steps ── */
+  .step-panel { display: none; animation: fadeIn 0.2s ease; }
+  .step-panel.active { display: block; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 20px 24px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-2);
+    margin-bottom: 14px;
+  }
+
+  /* ── Inputs ── */
+  .field { margin-bottom: 14px; }
+  .label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-2);
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+  .input {
+    width: 100%;
+    background: var(--bg-2);
+    border: 1px solid var(--border-2);
+    border-radius: var(--r-sm);
+    padding: 9px 12px;
+    color: var(--text);
+    font-size: 13px;
+    font-family: "SF Mono", "Fira Code", monospace;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+  .input-row { display: flex; gap: 8px; }
+  .input-row .input { flex: 1; }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 9px 18px;
+    border-radius: var(--r-sm);
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.15s;
+    outline: none;
+    white-space: nowrap;
+  }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: #fff;
+    box-shadow: 0 2px 12px var(--accent-glow);
+  }
+  .btn-primary:hover:not(:disabled) {
+    box-shadow: 0 4px 20px var(--accent-glow);
+    transform: translateY(-1px);
+  }
+  .btn-ghost {
+    background: var(--surface-2);
+    color: var(--text-2);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover:not(:disabled) { background: var(--surface); color: var(--text); }
+  .btn-danger {
+    background: rgba(239,68,68,0.1);
+    color: var(--danger);
+    border: 1px solid rgba(239,68,68,0.2);
+  }
+  .btn-row { display: flex; gap: 10px; align-items: center; }
+
+  /* ── Terminal log ── */
+  .terminal {
+    background: #0a0a0a;
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    padding: 14px 16px;
+    font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+    font-size: 12px;
+    line-height: 1.7;
+    color: #6ee7b7;
+    height: 240px;
+    overflow-y: auto;
+    margin-top: 14px;
+  }
+  .terminal::-webkit-scrollbar { width: 4px; }
+  .terminal::-webkit-scrollbar-thumb { background: #2a2a2a; }
+  .terminal .log-line { white-space: pre-wrap; word-break: break-all; }
+  .terminal .log-error { color: #fca5a5; }
+  .terminal .log-success { color: #86efac; }
+  .terminal .log-dim { color: #555; }
+  .terminal .cursor { display: inline-block; width: 8px; height: 14px; background: #6ee7b7; animation: blink 1s infinite; vertical-align: middle; margin-left: 2px; }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+
+  /* ── Progress bar ── */
+  .progress-wrap { margin-top: 14px; }
+  .progress-label {
+    display: flex; justify-content: space-between;
+    font-size: 12px; color: var(--text-2); margin-bottom: 8px;
+  }
+  .progress-track {
+    height: 4px;
+    background: var(--surface-2);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    border-radius: 2px;
+    transition: width 0.4s ease;
+    box-shadow: 0 0 8px var(--accent-glow);
+    width: 0%;
+  }
+
+  /* ── Engine selector ── */
+  .engine-cards { display: flex; gap: 12px; margin-bottom: 16px; }
+  .engine-card {
+    flex: 1;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+  .engine-card:hover { border-color: var(--border-2); }
+  .engine-card.selected {
+    border-color: var(--accent);
+    background: rgba(124,58,237,0.08);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+  .engine-badge {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    padding: 2px 6px;
+    border-radius: 3px;
+    position: absolute;
+    top: 10px; right: 10px;
+  }
+  .engine-badge.primary { background: rgba(124,58,237,0.2); color: var(--accent); }
+  .engine-badge.secondary { background: var(--surface); color: var(--text-3); }
+  .engine-name { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .engine-desc { font-size: 11px; color: var(--text-2); line-height: 1.5; }
+  .engine-status { margin-top: 8px; }
+
+  /* ── Image grid ── */
+  .img-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+  }
+  .img-thumb {
+    aspect-ratio: 1;
+    border-radius: var(--r-sm);
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.15s;
+    position: relative;
+  }
+  .img-thumb:hover { border-color: var(--accent); transform: scale(1.02); }
+  .img-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .img-thumb-label {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: linear-gradient(transparent, rgba(0,0,0,0.75));
+    padding: 8px 8px 6px;
+    font-size: 10px;
+    color: rgba(255,255,255,0.7);
+    font-family: monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ── Before/After comparison ── */
+  .comparison-viewer {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .compare-nav { display: flex; align-items: center; gap: 16px; }
+  .compare-counter { font-size: 13px; color: var(--text-2); min-width: 80px; text-align: center; }
+
+  .compare-pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    max-width: 800px;
+    width: 100%;
+  }
+  .compare-side {
+    border-radius: var(--r);
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+  }
+  .compare-side img {
+    width: 100%; display: block;
+    object-fit: contain;
+    max-height: 320px;
+  }
+  .compare-side-label {
+    font-size: 11px; font-weight: 600;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--text-2);
+    padding: 7px 12px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+  }
+
+  .empty-state {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px;
+    padding: 60px 20px;
+    color: var(--text-3);
+    text-align: center;
+  }
+  .empty-icon { font-size: 36px; opacity: 0.3; }
+  .empty-text { font-size: 13px; }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+  .modal-overlay.open { display: flex; animation: fadeIn 0.15s ease; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border-2);
+    border-radius: 14px;
+    padding: 28px;
+    width: 480px;
+    max-width: 95vw;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+  }
+  .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 20px; }
+  .modal-section { margin-bottom: 20px; }
+  .modal-section-title {
+    font-size: 11px; font-weight: 600; color: var(--text-2);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 10px;
+  }
+  .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
+
+  /* ── Divider ── */
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+  /* ── Status dots ── */
+  .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; }
+  .dot.green { background: var(--success); box-shadow: 0 0 6px var(--success); }
+  .dot.red { background: var(--danger); }
+  .dot.grey { background: var(--text-3); }
+
+  /* ── Scrollbar global ── */
+  html { scrollbar-width: thin; scrollbar-color: var(--border-2) transparent; }
+</style>
+</head>
+<body>
+
+<!-- ── Sidebar ── -->
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-mark">
+      <div class="brand-icon">✦</div>
+      <div>
+        <div class="brand-name">UNSTICKER</div>
+        <div class="brand-sub">贴纸移除工作台</div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="nav" id="nav">
+    <div class="nav-item active" data-step="0">
+      <div class="step-dot">1</div>
+      <span class="nav-label">选择目录</span>
+    </div>
+    <div class="nav-item" data-step="1">
+      <div class="step-dot">2</div>
+      <span class="nav-label">预览遮罩</span>
+    </div>
+    <div class="nav-item" data-step="2">
+      <div class="step-dot">3</div>
+      <span class="nav-label">AI 修复</span>
+    </div>
+    <div class="nav-item" data-step="3">
+      <div class="step-dot">4</div>
+      <span class="nav-label">查看结果</span>
+    </div>
+  </nav>
+
+  <div class="sidebar-footer">
+    <button class="btn-settings" onclick="openSettings()">
+      <span>⚙</span> API 配置
+    </button>
+  </div>
+</aside>
+
+<!-- ── Main ── -->
+<main class="main">
+  <div class="topbar">
+    <span class="topbar-title" id="topbarTitle">选择输入目录</span>
+    <span class="topbar-path" id="topbarPath" style="display:none"></span>
+    <span id="apiStatusBadge" class="badge warn">API 未配置</span>
+  </div>
+
+  <div class="content">
+
+    <!-- Step 1: Directory -->
+    <div class="step-panel active" id="step-0">
+      <div class="card">
+        <div class="card-title">输入目录</div>
+        <div class="field">
+          <label class="label">图片来源文件夹</label>
+          <div class="input-row">
+            <input class="input" id="inputDir" type="text" value="/Users/anthony/smallOne" placeholder="/path/to/images">
+          </div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:5px;">支持 JPG / PNG / WebP，自动跳过已处理文件</div>
+        </div>
+        <div class="field">
+          <label class="label">Job 输出目录 <span style="color:var(--text-3)">(自动生成)</span></label>
+          <input class="input" id="jobDir" type="text" placeholder="留空 = 输入目录/_sticker_jobs">
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btnPrepare" onclick="runPrepare()">
+            <span>▶</span> 生成遮罩
+          </button>
+          <span id="prepareStatus" style="font-size:12px;color:var(--text-2)"></span>
+        </div>
+        <div class="terminal" id="terminalPrepare" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- Step 2: Previews -->
+    <div class="step-panel" id="step-1">
+      <div class="card">
+        <div class="card-title">遮罩预览</div>
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:16px;">
+          红色区域 = 将被 AI 修复的贴纸区域。确认无误后进入修复步骤。
+        </div>
+        <div class="btn-row" style="margin-bottom:16px;">
+          <button class="btn btn-ghost" onclick="loadPreviews()">↻ 刷新</button>
+          <button class="btn btn-primary" onclick="goStep(2)">确认，开始修复 →</button>
+          <span id="previewCount" style="font-size:12px;color:var(--text-2)"></span>
+        </div>
+        <div id="previewJobDirHint" style="font-size:11px;color:var(--text-3);margin-bottom:10px;font-family:monospace"></div>
+        <div class="img-grid" id="previewGrid">
+          <div class="empty-state">
+            <div class="empty-icon">🖼</div>
+            <div class="empty-text">先运行「生成遮罩」</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Repair -->
+    <div class="step-panel" id="step-2">
+      <div class="card">
+        <div class="card-title">选择 AI 引擎</div>
+        <div class="engine-cards">
+          <div class="engine-card selected" id="engine-openai2" onclick="selectEngine('openai2')">
+            <span class="engine-badge primary">主要</span>
+            <div class="engine-name">GPT-image-2</div>
+            <div class="engine-desc">OpenAI 最新修复模型<br>并发 4，速度快</div>
+            <div class="engine-status">
+              <span id="openai2Status" class="badge">检查中…</span>
+            </div>
+          </div>
+          <div class="engine-card" id="engine-tencent" onclick="selectEngine('tencent')">
+            <span class="engine-badge secondary">备用</span>
+            <div class="engine-name">腾讯云</div>
+            <div class="engine-desc">Hunyuan 修复 API<br>广州节点，稳定</div>
+            <div class="engine-status">
+              <span id="tencentStatus" class="badge">检查中…</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">任务状态</div>
+        <div class="progress-wrap">
+          <div class="progress-label">
+            <span id="progressText">等待开始</span>
+            <span id="progressCount">—</span>
+          </div>
+          <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+        </div>
+        <div class="btn-row" style="margin-top:16px;">
+          <button class="btn btn-primary" id="btnRepair" onclick="runRepair()">
+            <span>⚡</span> 开始修复
+          </button>
+          <button class="btn btn-danger" id="btnStop" onclick="stopRepair()" style="display:none">
+            ■ 停止
+          </button>
+          <button class="btn btn-ghost" onclick="goStep(3)">查看结果 →</button>
+        </div>
+        <div class="terminal" id="terminalRepair" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- Step 4: Results -->
+    <div class="step-panel" id="step-3">
+      <div class="card">
+        <div class="card-title">修复结果对比</div>
+        <div class="comparison-viewer" id="comparisonViewer">
+          <div class="empty-state">
+            <div class="empty-icon">✦</div>
+            <div class="empty-text">修复完成后在这里查看前后对比</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</main>
+
+<!-- ── Settings Modal ── -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <div class="modal-title">⚙ API 配置</div>
+
+    <div class="modal-section">
+      <div class="modal-section-title">OpenAI (gpt-image-2)</div>
+      <div class="field">
+        <label class="label">API Key</label>
+        <input class="input" id="cfgOpenaiKey" type="password" placeholder="sk-...">
+      </div>
+      <div class="field">
+        <label class="label">API URL <span style="color:var(--text-3)">(默认 packyapi)</span></label>
+        <input class="input" id="cfgOpenaiUrl" type="text" placeholder="https://www.packyapi.com/v1/images/edits">
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="modal-section">
+      <div class="modal-section-title">腾讯云</div>
+      <div class="field">
+        <label class="label">Secret ID</label>
+        <input class="input" id="cfgTencentId" type="password" placeholder="AKID...">
+      </div>
+      <div class="field">
+        <label class="label">Secret Key</label>
+        <input class="input" id="cfgTencentKey" type="password" placeholder="...">
+      </div>
+      <div class="field">
+        <label class="label">Region</label>
+        <input class="input" id="cfgTencentRegion" type="text" placeholder="ap-guangzhou">
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeSettings()">取消</button>
+      <button class="btn btn-primary" onclick="saveSettings()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Image lightbox ── -->
+<div class="modal-overlay" id="lightbox" onclick="closeLightbox()">
+  <img id="lightboxImg" style="max-width:90vw;max-height:90vh;border-radius:8px;box-shadow:0 24px 80px rgba(0,0,0,0.8);">
+</div>
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+let currentStep = 0;
+let currentEngine = 'openai2';
+let repairEventSource = null;
+let prepareEventSource = null;
+let resultPairs = [];
+let resultIndex = 0;
+let comparePos = 50; // percent
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function goStep(n) {
+  document.querySelectorAll('.step-panel').forEach((p, i) => {
+    p.classList.toggle('active', i === n);
+  });
+  document.querySelectorAll('.nav-item').forEach((item, i) => {
+    item.classList.remove('active');
+    if (i < n) item.classList.add('done');
+    if (i === n) item.classList.add('active');
+  });
+  currentStep = n;
+
+  const titles = ['选择输入目录', '预览遮罩区域', 'AI 修复处理', '修复结果对比'];
+  document.getElementById('topbarTitle').textContent = titles[n];
+
+  if (n === 1) loadPreviews();
+  if (n === 2) { loadJobStatus(); loadApiStatus(); }
+  if (n === 3) loadResults();
+}
+
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => goStep(parseInt(item.dataset.step)));
+});
+
+// ── Topbar path ───────────────────────────────────────────────────────────────
+function updateTopbarPath() {
+  const d = document.getElementById('inputDir').value.trim();
+  const el = document.getElementById('topbarPath');
+  if (d) { el.textContent = d; el.style.display = ''; }
+  else el.style.display = 'none';
+}
+document.getElementById('inputDir').addEventListener('input', updateTopbarPath);
+document.getElementById('inputDir').addEventListener('change', () => {
+  const input = document.getElementById('inputDir').value.trim();
+  if (input && !document.getElementById('jobDir').value.trim()) {
+    // auto-populate job dir preview
+  }
+  updateTopbarPath();
+});
+
+// ── Job dir helper ────────────────────────────────────────────────────────────
+function getJobDir() {
+  const jd = document.getElementById('jobDir').value.trim();
+  const id = document.getElementById('inputDir').value.trim();
+  return jd || (id ? id + '/_sticker_jobs' : '');
+}
+
+// ── Terminal helper ───────────────────────────────────────────────────────────
+function termLog(elId, text, cls = '') {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.style.display = '';
+  const line = document.createElement('div');
+  line.className = 'log-line ' + cls;
+  line.textContent = text;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+function termClear(elId) {
+  const el = document.getElementById(elId);
+  if (el) { el.innerHTML = ''; el.style.display = 'none'; }
+}
+function termCursor(elId) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const cur = document.createElement('span');
+  cur.className = 'cursor';
+  cur.id = elId + '_cursor';
+  el.appendChild(cur);
+}
+function termRemoveCursor(elId) {
+  const cur = document.getElementById(elId + '_cursor');
+  if (cur) cur.remove();
+}
+
+// ── Prepare ───────────────────────────────────────────────────────────────────
+function runPrepare() {
+  const inputDir = document.getElementById('inputDir').value.trim();
+  if (!inputDir) { alert('请输入图片目录'); return; }
+  const jobDir = document.getElementById('jobDir').value.trim();
+
+  document.getElementById('btnPrepare').disabled = true;
+  document.getElementById('prepareStatus').textContent = '处理中…';
+  termClear('terminalPrepare');
+  termLog('terminalPrepare', '$ 生成遮罩…', 'log-dim');
+  termCursor('terminalPrepare');
+  updateTopbarPath();
+
+  if (prepareEventSource) prepareEventSource.close();
+
+  fetch('/api/prepare', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ input_dir: inputDir, job_dir: jobDir || undefined }),
+  }).then(res => {
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+
+    function pump() {
+      reader.read().then(({ done, value }) => {
+        if (done) return;
+        buf += decoder.decode(value, { stream: true });
+        const parts = buf.split('\n\n');
+        buf = parts.pop();
+        parts.forEach(part => {
+          if (!part.startsWith('data:')) return;
+          try {
+            const d = JSON.parse(part.slice(5));
+            if (d.log !== undefined) {
+              const cls = d.log.includes('failed') || d.log.includes('Error') ? 'log-error'
+                        : d.log.includes('Done') || d.log.includes('work order') ? 'log-success' : '';
+              termLog('terminalPrepare', d.log, cls);
+            }
+            if (d.done) {
+              termRemoveCursor('terminalPrepare');
+              document.getElementById('btnPrepare').disabled = false;
+              if (d.code === 0) {
+                document.getElementById('prepareStatus').textContent = '✓ 完成';
+                termLog('terminalPrepare', '✓ 遮罩生成完成，可进入预览步骤', 'log-success');
+                goStep(1);
+              } else {
+                document.getElementById('prepareStatus').textContent = '✗ 失败';
+                termLog('terminalPrepare', '✗ 出错，请检查日志', 'log-error');
+              }
+            }
+          } catch(e) {}
+        });
+        pump();
+      });
+    }
+    pump();
+  }).catch(err => {
+    termRemoveCursor('terminalPrepare');
+    termLog('terminalPrepare', '✗ 连接失败: ' + err, 'log-error');
+    document.getElementById('btnPrepare').disabled = false;
+    document.getElementById('prepareStatus').textContent = '✗ 失败';
+  });
+}
+
+// ── Previews ──────────────────────────────────────────────────────────────────
+function loadPreviews() {
+  const jd = getJobDir();
+  const hint = document.getElementById('previewJobDirHint');
+  if (hint) hint.textContent = 'job_dir: ' + (jd || '（未填写）');
+  if (!jd) {
+    document.getElementById('previewGrid').innerHTML = '<div class="empty-state"><div class="empty-icon">⚠</div><div class="empty-text">请先填写输入目录</div></div>';
+    return;
+  }
+  const grid = document.getElementById('previewGrid');
+  grid.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><div class="empty-text">加载中…</div></div>';
+
+  fetch('/api/previews?job_dir=' + encodeURIComponent(jd))
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById('previewCount').textContent = data.images.length + ' 张';
+      if (!data.images.length) {
+        grid.innerHTML = '<div class="empty-state"><div class="empty-icon">🖼</div><div class="empty-text">未找到预览图，先运行生成遮罩</div></div>';
+        return;
+      }
+      grid.innerHTML = '';
+      data.images.forEach(path => {
+        const name = path.split('/').pop().replace('.preview.jpg','').replace('.preview.png','');
+        const div = document.createElement('div');
+        div.className = 'img-thumb';
+        div.innerHTML = `<img src="/img?path=${encodeURIComponent(path)}" loading="lazy"><div class="img-thumb-label">${name}</div>`;
+        div.onclick = () => openLightbox('/img?path=' + encodeURIComponent(path));
+        grid.appendChild(div);
+      });
+    })
+    .catch(err => {
+      grid.innerHTML = `<div class="empty-state"><div class="empty-icon">✗</div><div class="empty-text">加载失败：${err}<br><span style="font-family:monospace;font-size:10px">${jd}</span></div></div>`;
+    });
+}
+
+// ── Engine selection ──────────────────────────────────────────────────────────
+function selectEngine(engine) {
+  currentEngine = engine;
+  document.querySelectorAll('.engine-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('engine-' + engine).classList.add('selected');
+}
+
+// ── API status ────────────────────────────────────────────────────────────────
+function loadApiStatus() {
+  fetch('/api/config').then(r => r.json()).then(cfg => {
+    const hasOpenai = cfg._has_openai;
+    const hasTencent = cfg._has_tencent;
+
+    const openaiEl = document.getElementById('openai2Status');
+    openaiEl.textContent = hasOpenai ? '✓ 已配置' : '✗ 未配置';
+    openaiEl.className = 'badge ' + (hasOpenai ? 'ok' : 'warn');
+
+    const tencentEl = document.getElementById('tencentStatus');
+    tencentEl.textContent = hasTencent ? '✓ 已配置' : '✗ 未配置';
+    tencentEl.className = 'badge ' + (hasTencent ? 'ok' : 'warn');
+
+    const globalBadge = document.getElementById('apiStatusBadge');
+    if (hasOpenai || hasTencent) {
+      globalBadge.textContent = 'API 已配置';
+      globalBadge.className = 'badge ok';
+    } else {
+      globalBadge.textContent = 'API 未配置';
+      globalBadge.className = 'badge warn';
+    }
+  });
+}
+
+// ── Jobs status ───────────────────────────────────────────────────────────────
+let _pendingCount = 0; // 本次运行前待处理数量
+
+function loadJobStatus() {
+  const jd = getJobDir();
+  if (!jd) return;
+  fetch('/api/jobs?job_dir=' + encodeURIComponent(jd))
+    .then(r => r.json())
+    .then(data => {
+      const pending = data.total - data.completed;
+      _pendingCount = pending;
+
+      // 进度条：已完成 / 全部
+      const pct = data.total ? Math.round(data.completed / data.total * 100) : 0;
+      document.getElementById('progressFill').style.width = pct + '%';
+
+      if (data.total === 0) {
+        document.getElementById('progressText').textContent = '暂无任务';
+        document.getElementById('progressCount').textContent = '—';
+        setRepairBtn('start');
+      } else if (pending === 0) {
+        document.getElementById('progressText').textContent = '全部完成 ✓';
+        document.getElementById('progressCount').textContent = `${data.completed} / ${data.total}`;
+        setRepairBtn('done');
+      } else if (data.completed === 0) {
+        // 全新任务
+        document.getElementById('progressText').textContent = `共 ${data.total} 张，待处理`;
+        document.getElementById('progressCount').textContent = `0 / ${data.total}`;
+        setRepairBtn('start');
+      } else {
+        // 有部分失败：显示失败数量
+        document.getElementById('progressText').textContent = `上次失败 ${pending} 张，等待重试`;
+        document.getElementById('progressCount').textContent = `${data.completed} / ${data.total} 已完成`;
+        setRepairBtn('retry');
+      }
+    });
+}
+
+function setRepairBtn(state) {
+  const btn = document.getElementById('btnRepair');
+  if (state === 'retry') {
+    btn.innerHTML = '<span>↻</span> 重试修复';
+    btn.disabled = false;
+  } else if (state === 'done') {
+    btn.innerHTML = '<span>↻</span> 重新修复';
+    btn.disabled = false;
+  } else {
+    btn.innerHTML = '<span>⚡</span> 开始修复';
+    btn.disabled = false;
+  }
+}
+
+// ── Repair ────────────────────────────────────────────────────────────────────
+function runRepair() {
+  const jd = getJobDir();
+  if (!jd) { alert('请先选择输入目录并生成遮罩'); return; }
+
+  // 先拿当前待处理数量，再启动修复
+  fetch('/api/jobs?job_dir=' + encodeURIComponent(jd))
+    .then(r => r.json())
+    .then(jobData => {
+      const pendingTotal = jobData.total - jobData.completed; // 本次需要处理的数量
+      const isRetry = jobData.completed > 0 && pendingTotal > 0;
+
+      document.getElementById('btnRepair').disabled = true;
+      document.getElementById('btnStop').style.display = '';
+      termClear('terminalRepair');
+      const engineName = currentEngine === 'openai2' ? 'GPT-image-2' : '腾讯云';
+      termLog('terminalRepair', `$ ${isRetry ? '重试' : '开始'} ${engineName} 修复（共 ${pendingTotal} 张待处理）…`, 'log-dim');
+      termCursor('terminalRepair');
+
+      // 进度：以本次待处理数量为分母，只计 repaired / failed（跳过 skip）
+      let newDone = 0, newFailed = 0;
+      const repairStartTime = Date.now();
+
+      document.getElementById('progressFill').style.width = '0%';
+      document.getElementById('progressCount').textContent = `0 / ${pendingTotal}`;
+      document.getElementById('progressText').textContent = isRetry ? `重试中 0/${pendingTotal}` : `处理中 0/${pendingTotal}`;
+
+      fetch('/api/repair', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ engine: currentEngine, job_dir: jd }),
+      }).then(res => {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = '';
+
+        function pump() {
+          reader.read().then(({ done, value }) => {
+            if (done) return;
+            buf += decoder.decode(value, { stream: true });
+            const parts = buf.split('\n\n');
+            buf = parts.pop();
+            parts.forEach(part => {
+              if (!part.startsWith('data:')) return;
+              try {
+                const d = JSON.parse(part.slice(5));
+                if (d.log !== undefined) {
+                  const isError    = /^\s*\[\d+\/\d+\] failed:/.test(d.log) || /^\s*failed:/.test(d.log);
+                  const isSkip     = d.log.includes('skip existing');
+                  const isRepaired = /^\[\d+\/\d+\] repaired:/.test(d.log);
+                  const cls = isError ? 'log-error' : isSkip ? 'log-dim' : isRepaired ? 'log-success' : '';
+                  termLog('terminalRepair', d.log, cls);
+
+                  // 只在明确的 repaired / failed 行上计数，其余行（output: comparison: 等）忽略
+                  if (isRepaired) newDone++;
+                  if (isError) newFailed++;
+
+                  if (pendingTotal > 0 && (newDone + newFailed) > 0) {
+                    const processed = newDone + newFailed;
+                    const pct = Math.round(processed / pendingTotal * 100);
+                    document.getElementById('progressFill').style.width = Math.min(pct, 100) + '%';
+                    document.getElementById('progressCount').textContent = `${processed} / ${pendingTotal}`;
+
+                    const elapsed = (Date.now() - repairStartTime) / 1000; // 秒
+                    const rate = processed / elapsed; // 张/秒
+                    const remaining = pendingTotal - processed;
+                    const etaSec = remaining > 0 ? Math.round(remaining / rate) : 0;
+                    const etaStr = etaSec > 60
+                      ? `${Math.floor(etaSec / 60)}分${etaSec % 60}秒`
+                      : `${etaSec}秒`;
+                    const label = isRetry ? '重试中' : '处理中';
+                    const failNote = newFailed > 0 ? ` · ${newFailed} 失败` : '';
+                    const etaNote = remaining > 0 ? ` · 剩余约 ${etaStr}` : '';
+                    document.getElementById('progressText').textContent = `${label} ${processed}/${pendingTotal}${failNote}${etaNote}`;
+                  }
+                }
+                if (d.done) {
+                  termRemoveCursor('terminalRepair');
+                  document.getElementById('btnStop').style.display = 'none';
+                  if (d.code === 0) {
+                    termLog('terminalRepair', '✓ 全部完成', 'log-success');
+                  } else {
+                    termLog('terminalRepair', `✗ 完成 ${newDone} 张，失败 ${newFailed} 张`, 'log-error');
+                  }
+                  loadJobStatus(); // 刷新按钮状态和进度
+                }
+              } catch(e) {}
+            });
+            pump();
+          });
+        }
+        pump();
+      }).catch(err => {
+        termRemoveCursor('terminalRepair');
+        termLog('terminalRepair', '✗ 连接失败: ' + err, 'log-error');
+        document.getElementById('btnRepair').disabled = false;
+        document.getElementById('btnStop').style.display = 'none';
+      });
+    });
+}
+
+function stopRepair() {
+  // Close connection — server-side subprocess will continue but we stop watching
+  termLog('terminalRepair', '⚠ 已断开监听（后台仍在运行）', 'log-error');
+  document.getElementById('btnRepair').disabled = false;
+  document.getElementById('btnStop').style.display = 'none';
+  termRemoveCursor('terminalRepair');
+}
+
+// ── Results ───────────────────────────────────────────────────────────────────
+function loadResults() {
+  const jd = getJobDir();
+  if (!jd) return;
+  const viewer = document.getElementById('comparisonViewer');
+  viewer.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><div class="empty-text">加载中…</div></div>';
+
+  fetch(`/api/results?job_dir=${encodeURIComponent(jd)}&engine=${currentEngine}`)
+    .then(r => r.json())
+    .then(data => {
+      resultPairs = data.pairs || [];
+      resultIndex = 0;
+      if (!resultPairs.length) {
+        viewer.innerHTML = '<div class="empty-state"><div class="empty-icon">✦</div><div class="empty-text">暂无已完成的修复结果</div></div>';
+        return;
+      }
+      renderComparison();
+    });
+}
+
+function renderComparison() {
+  if (!resultPairs.length) return;
+  const pair = resultPairs[resultIndex];
+  const viewer = document.getElementById('comparisonViewer');
+
+  viewer.innerHTML = `
+    <div class="compare-nav">
+      <button class="btn btn-ghost" onclick="prevResult()" ${resultIndex === 0 ? 'disabled' : ''}>← 上一张</button>
+      <span class="compare-counter">${resultIndex + 1} / ${resultPairs.length}</span>
+      <button class="btn btn-ghost" onclick="nextResult()" ${resultIndex === resultPairs.length - 1 ? 'disabled' : ''}>下一张 →</button>
+      <span style="font-size:11px;color:var(--text-3);font-family:monospace;margin-left:8px">${pair.name}</span>
+    </div>
+    <div class="compare-pair">
+      <div class="compare-side">
+        <img src="/img?path=${encodeURIComponent(pair.source)}" loading="lazy">
+        <div class="compare-side-label">原图</div>
+      </div>
+      <div class="compare-side">
+        <img src="/img?path=${encodeURIComponent(pair.output)}" loading="lazy">
+        <div class="compare-side-label">修复后</div>
+      </div>
+    </div>
+  `;
+}
+
+function prevResult() { if (resultIndex > 0) { resultIndex--; renderComparison(); } }
+function nextResult() { if (resultIndex < resultPairs.length - 1) { resultIndex++; renderComparison(); } }
+
+// ── Lightbox ──────────────────────────────────────────────────────────────────
+function openLightbox(src) {
+  document.getElementById('lightboxImg').src = src;
+  document.getElementById('lightbox').classList.add('open');
+}
+function closeLightbox() { document.getElementById('lightbox').classList.remove('open'); }
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+function openSettings() {
+  fetch('/api/config').then(r => r.json()).then(cfg => {
+    document.getElementById('cfgOpenaiUrl').value = cfg.OPENAI_API_URL || '';
+    document.getElementById('cfgTencentRegion').value = cfg.TENCENTCLOUD_REGION || 'ap-guangzhou';
+    // Keys show placeholder (masked)
+    document.getElementById('cfgOpenaiKey').placeholder = cfg._has_openai ? '●●●●●●●● (已设置)' : 'sk-...';
+    document.getElementById('cfgTencentId').placeholder = cfg._has_tencent ? '●●●●●●●● (已设置)' : 'AKID...';
+    document.getElementById('cfgTencentKey').placeholder = cfg._has_tencent ? '●●●●●●●● (已设置)' : '...';
+  });
+  document.getElementById('settingsModal').classList.add('open');
+}
+
+function closeSettings() {
+  document.getElementById('settingsModal').classList.remove('open');
+}
+
+function saveSettings() {
+  const data = {
+    OPENAI_API_KEY: document.getElementById('cfgOpenaiKey').value,
+    OPENAI_API_URL: document.getElementById('cfgOpenaiUrl').value,
+    TENCENTCLOUD_SECRET_ID: document.getElementById('cfgTencentId').value,
+    TENCENTCLOUD_SECRET_KEY: document.getElementById('cfgTencentKey').value,
+    TENCENTCLOUD_REGION: document.getElementById('cfgTencentRegion').value,
+  };
+  fetch('/api/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  }).then(() => {
+    closeSettings();
+    loadApiStatus();
+  });
+}
+
+// Close modal on overlay click
+document.getElementById('settingsModal').addEventListener('click', function(e) {
+  if (e.target === this) closeSettings();
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeSettings(); closeLightbox(); }
+  if (currentStep === 3) {
+    if (e.key === 'ArrowLeft') prevResult();
+    if (e.key === 'ArrowRight') nextResult();
+  }
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadApiStatus();
+updateTopbarPath();
+</script>
+</body>
+</html>
