@@ -33,5 +33,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
 
-# 启动应用
-CMD ["python3", "-m", "uvicorn", "app.server_production:app", "--host", "0.0.0.0", "--port", "8000"]
+# 启动应用（Railway 会通过 PORT 环境变量指定端口）
+CMD python3 -m uvicorn app.server_production:app --host 0.0.0.0 --port ${PORT:-8000}
