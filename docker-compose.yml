@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  unsticker:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_API_URL=${OPENAI_API_URL}
+      - TENCENTCLOUD_SECRET_ID=${TENCENTCLOUD_SECRET_ID}
+      - TENCENTCLOUD_SECRET_KEY=${TENCENTCLOUD_SECRET_KEY}
+      - TENCENTCLOUD_REGION=${TENCENTCLOUD_REGION}
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped

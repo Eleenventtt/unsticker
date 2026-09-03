@@ -1,9 +1,11 @@
 .env
+.env.production
 .DS_Store
 __pycache__/
 *.pyc
 output/
 output_*/
+data/
 masks/
 tencent_masks/
 api_masks/
@@ -11,3 +13,6 @@ api_sources/
 previews/
 comparisons_*/
 work_order*.jsonl
+
+# Docker
+*.log
